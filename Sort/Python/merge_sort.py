@@ -22,8 +22,8 @@ def merge_sort_bottom_up(array):
         while step < size:
             # print('while')
             low = 0
-            while low < size:
-                mid = min(low + step, size) - 1               
+            while low < size - step:
+                mid = low + step - 1               
                 high = min(mid + step, size - 1)
                 # print('s={s} l={l} m={m} h={h}'.format(**{'s': step, 'l': low, 'm': mid, 'h': high}))
                 _merge(array, aux, low, mid, high)
