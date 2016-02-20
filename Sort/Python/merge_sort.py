@@ -1,3 +1,6 @@
+from math import ceil
+
+
 def merge_sort_top_down(array):
     def _sort(array, aux, low, high):        
         # print('sort', low, high)
@@ -11,18 +14,22 @@ def merge_sort_top_down(array):
     _sort(array, list(array), 0, len(array) - 1)
 
 
-def merge_sort_bottom_up(array):
-    part_size = 1
+def merge_sort_bottom_up(array):    
     size = len(array)
-    aux = []*size
-    while part_size < size:
-        for offset in range(size, part_size):
-            low = offset
-            mid = offset + part_size
-            high = min(size - 1, offset + 2*part_size)
-            _merge(array, aux, low, mid, high)
-
-        part_size += part_size
+    if size > 1:
+        aux = [0]*size
+        step = 1
+        while step < size:
+            # print('while')
+            low = 0
+            while low < size:
+                mid = min(low + step, size) - 1               
+                high = min(mid + step, size - 1)
+                # print('s={s} l={l} m={m} h={h}'.format(**{'s': step, 'l': low, 'm': mid, 'h': high}))
+                _merge(array, aux, low, mid, high)
+                # print(array)
+                low += 2*step
+            step += step
 
 
 def _merge(array, aux, low, mid, high):
@@ -56,29 +63,30 @@ def is_sorted(array):
 
 
 def test_sort_func(array, func):
-    short = array if len(array) <= 30 else array[0:10] + ['...'] + array[-10:]
-    print('In %s' % short)
+    short_in = list(array) if len(array) <= 30 else array[0:10] + ['...'] + array[-10:]
+    print('In (len=%s) %s' % (len(array), short_in))
     
     func(array)
     
-    short = array if len(array) <= 30 else array[0:10] + ['...'] + array[-10:]
-    print('Out %s' % short)
+    short_out = list(array) if len(array) <= 30 else array[0:10] + ['...'] + array[-10:]
+    print('Out %s' % short_out)
     if not is_sorted(array):
-        raise Exception('Error on fixture %s' % short)
+        raise Exception('Error on fixture %s -> %s' % (short_in, short_out))
     print('Sorted!')
-    print()
+    print('')
 
 
 def test_suite(func):
     from random import randint
     
-    fixtures =[[], [1], [1, 1], [1, 1, 1], [1, 2, 3], [3, 2, 1]]
-    for size in (10, 50, 100, 1000):
+    fixtures =[[], [1], [1, 1], [0, 1], [1, 0], [1, 1, 1], [1, 2, 3], [3, 2, 1]]
+    for size in (4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 50, 100, 1000):
         fixtures.append([randint(0, 1000) for _ in range(size)])
         
     print('Testing sort function [' + func.__name__ + '] ...')
     for a in fixtures:
         test_sort_func(a, func)
+    print('Success!')
    
 
 if __name__ == '__main__':
