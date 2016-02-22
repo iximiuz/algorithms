@@ -21,8 +21,12 @@ def _sort(array, lt, gt):
     if lt >= gt: return
 
     j = _partition(array, lt, gt)
-    _sort(array, lt, j - 1)
-    _sort(array, j + 1, gt)
+    if j - lt <= gt - j:
+        _sort(array, lt, j - 1)
+        _sort(array, j + 1, gt)
+    else:
+        _sort(array, j + 1, gt)
+        _sort(array, lt, j - 1)        
 
 
 def _partition_3way(array, lt, gt):
@@ -47,7 +51,7 @@ def _sort_3way(array, lt, gt):
     l, g = _partition_3way(array, lt, gt)
     _sort_3way(array, lt, l - 1)
     _sort_3way(array, g + 1, gt)
-
+    
 
 def quick_sort(array):
     shuffle(array)
