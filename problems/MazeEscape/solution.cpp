@@ -3,12 +3,14 @@
 #include<iostream>
 #include<memory>
 #include<string>
+#include<sstream>
 #include<queue>
 #include<unordered_map>
 
 using namespace std;
 
-enum Direction { up, right, down, left, _last };
+enum Direction { NORTH, OST, SOUTH, WEST, _DIRECTIONS_COUNT };
+enum Movement  { FORWARD, RIGHT, BACKWARD, LEFT };
 enum Angle { angle0 = 0, angle90 = 90, angle180 = 180, angle270 = 270 };
 
 struct DMeta {
@@ -21,40 +23,24 @@ struct DMeta {
         : d(d), dx(dx), dy(dy), angle(angle) {}
 };
 
-const DMeta DMETA[Direction::_last] = {
-    DMeta(Direction::up, 0, -1, Angle::angle0),
-    DMeta(Direction::right, 1, 0, Angle::angle90),
-    DMeta(Direction::down, 0, 1, Angle::angle180),
-    DMeta(Direction::left, -1, 0, Angle::angle270),
+const DMeta DMETA[Direction::_DIRECTIONS_COUNT] = {
+    DMeta(Direction::NORTH, 0, -1, Angle::angle0),
+    DMeta(Direction::OST, 1, 0, Angle::angle90),
+    DMeta(Direction::SOUTH, 0, 1, Angle::angle180),
+    DMeta(Direction::WEST, -1, 0, Angle::angle270),
 };
 
 Direction intToDirection(int d) {
     switch (d) {
-    case 0: return Direction::up;
-    case 1: return Direction::right;
-    case 2: return Direction::down;
-    case 3: return Direction::left;
+    case 0: return Direction::NORTH;
+    case 1: return Direction::OST;
+    case 2: return Direction::SOUTH;
+    case 3: return Direction::WEST;
     }
     throw runtime_error("Unknown direction code");
 }
 
-Direction moveToDirection(int dx, int dy) {
-    assert(abs(dx) + abs(dy) == 1);
-
-    for (const auto &dm : DMETA) {
-        if (dm.dx == dx && dm.dy == dy) {
-            return dm.d;
-        }
-    }
-    throw runtime_error("Unreachable");
-}
-
-// Direction absoluteDirection(Direction absFrom, Direction relTo) {
-//     const size_t relAngle = (360 + DMETA[absTo].angle - DMETA[absFrom].angle) % 360;
-//     return angleToDirection(relAngle);
-// }
-
-Direction angleToDirection(Angle angle) {
+Direction directionByAngle(Angle angle) {
     for (const auto &dm : DMETA) {
         if (angle == dm.angle) {
             return dm.d;
@@ -63,27 +49,25 @@ Direction angleToDirection(Angle angle) {
     throw runtime_error("Unknown angle");
 }
 
-Direction relativeDirection(Direction absFrom, Direction absTo) {
-    const size_t relAngle = (360 + DMETA[absTo].angle - DMETA[absFrom].angle) % 360;
-    for (const auto &dm : DMETA) {
-        if (relAngle == dm.angle) {
-            return dm.d;
-        }
-    }
-    throw runtime_error("Unreachable");
-}
-
 Direction oppositeDirection(Direction d) {
-    return angleToDirection(Angle((DMETA[d].angle + 180) % 360));
+    return directionByAngle(Angle((DMETA[d].angle + 180) % 360));
 }
 
-string directionToString(Direction d) {
-    switch (d) {
-    case Direction::up: return "UP";
-    case Direction::right: return "RIGHT";
-    case Direction::down: return "DOWN";
-    case Direction::left: return "LEFT";
-    default: throw runtime_error("Unknown direction code");
+Movement movementByAngle(Angle angle) {
+    return Movement(angle / 90);
+}
+
+Angle angleByMovement(Movement m) {
+    return Angle(90 * m);
+}
+
+string movementToString(Movement m) {
+    switch (m) {
+    case Movement::FORWARD: return "UP";
+    case Movement::RIGHT: return "RIGHT";
+    case Movement::BACKWARD: return "DOWN";
+    case Movement::LEFT: return "LEFT";
+    default: throw runtime_error("Unknown movement code");
     }
 }
 
@@ -91,11 +75,16 @@ typedef char Cell;
 
 const Cell CELL_UNKNOWN = '.';
 const Cell CELL_WALL = '#';
+const Cell CELL_WALL_VISITED = 'x';
 const Cell CELL_PATH = '-';
 const Cell CELL_EXIT = 'e';
 
 bool isPathCell(const Cell c) {
     return CELL_PATH == c || (0 <= c - '0' && c - '0' <= 9) || (0 <= c - 'A' && c - 'A' <= 5);
+}
+
+bool isWallCell(const Cell c) {
+    return CELL_WALL == c || CELL_WALL_VISITED == c;
 }
 
 class Map {
@@ -159,13 +148,37 @@ public:
     }
 
     void setVisitedFrom(int x, int y, Direction d) {
+        Cell c = get(x, y);
+        assert(isPathCell(c));
 
+        if (c == CELL_PATH) {
+            c = '0';
+        }
+
+        int code = stoi(string(1, tolower(c)), nullptr, 16) | (1 << d);
+        stringstream ss;
+        ss << uppercase << hex << code;
+        set(x, y, ss.str()[0]);
+    }
+
+    bool isVisitedFrom(int x, int y, Direction d) const {
+        Cell c = get(x, y);
+        if (c == CELL_PATH) {
+            c = '0';
+        }
+        return stoi(string(1, tolower(c)), nullptr, 16) & (1 << d);
+    }
+
+    void setVisitedWall(int x, int y) {
+        set(x, y, CELL_WALL_VISITED);
     }
 
     void merge(int n, int w, const Map &area) {
         for (int x = area.west(); x < area.west() + int(area.width()); x++) {
             for (int y = area.north(); y < area.north() + int(area.height()); y++) {
-                set(w + x - area.west(), n + y - area.north(), area.get(x, y));
+                if (CELL_UNKNOWN == get(w + x - area.west(), n + y - area.north())) {
+                    set(w + x - area.west(), n + y - area.north(), area.get(x, y));
+                }
             }
         }
     }
@@ -263,8 +276,13 @@ bool find(const Cell c, const Map &map, const int x, const int y, const size_t d
 
         for (const auto &dm : DMETA) {
            PNode neighbour(new Node(node->x + dm.dx, node->y + dm.dy, node));
-           if ('x' != visited.get(neighbour->x, neighbour->y) && neighbour->deep <= deep) {
-                fringe.push(neighbour);
+           if (
+                   'x' != visited.get(neighbour->x, neighbour->y) 
+                   && (isPathCell(map.get(neighbour->x, neighbour->y)) 
+                      || CELL_EXIT == map.get(neighbour->x, neighbour->y))
+                   && neighbour->deep <= deep
+              ) {
+               fringe.push(neighbour);
             } 
         }
     }
@@ -272,40 +290,120 @@ bool find(const Cell c, const Map &map, const int x, const int y, const size_t d
     return false;
 }
 
-enum class PlayerState { initial, wall, lookup };
+struct NeighbourCell {
+    const Cell val;
+    const int x;
+    const int y;
+    const int dx;
+    const int dy;
 
-PlayerState deserializePlayerState(int ps) {
-    switch (ps) {
-    case 0: return PlayerState::initial;
-    case 1: return PlayerState::wall;
-    case 2: return PlayerState::lookup;
+    NeighbourCell(Cell val, int x, int y, int dx, int dy)
+        : val(val), x(x), y(y), dx(dx), dy(dy) {
+        assert(abs(dx) + abs(dy) == 1);
+    }
+};
+
+class Player {
+public:
+    int x; 
+    int y;
+    Direction d;
+    const Map &map;
+
+    Player(const Map &map) : x(0), y(0), d(Direction::NORTH), map(map) {}
+
+    NeighbourCell cellAt(Movement m) const {
+        Angle relAngle = angleByMovement(m);
+        auto direction = directionByAngle(Angle((DMETA[d].angle + relAngle) % 360));
+        auto dm = DMETA[direction];
+        return NeighbourCell(map.get(x + dm.dx, y + dm.dy), x + dm.dx, y + dm.dy, dm.dx, dm.dy);
+    }
+
+    bool move(Movement m, int &dx, int &dy) {
+        auto cell = cellAt(m);
+        if (!isPathCell(cell.val)) {
+            return false;
+        }
+
+        dx = cell.dx;
+        dy = cell.dy;
+        move(cell.dx, cell.dy);
+
+        return true;
+    }
+
+    Movement move(const int dx, const int dy) {
+        auto nextD = moveToDirection_(dx, dy);
+        auto rv = movementTo_(nextD);
+
+        x += dx;
+        y += dy;
+        d = nextD;
+
+        return rv;
+    }
+
+private:
+    Movement movementTo_(Direction to) const {
+        const size_t relAngle = (360 + DMETA[to].angle - DMETA[d].angle) % 360;
+        return movementByAngle(Angle(relAngle));
+    }
+
+    Direction moveToDirection_(int dx, int dy) {
+        assert(abs(dx) + abs(dy) == 1);
+
+        for (const auto &dm : DMETA) {
+            if (dm.dx == dx && dm.dy == dy) {
+                return dm.d;
+            }
+        }
+        throw runtime_error("Unreachable");
+    }
+};
+
+enum class SolverState { INITIAL, WALL, LOOKUP };
+
+SolverState deserializeSolverState(int state) {
+    switch (state) {
+    case 0: return SolverState::INITIAL;
+    case 1: return SolverState::WALL;
+    case 2: return SolverState::LOOKUP;
     }
     throw runtime_error("Unkown player state");    
 }
 
-class Player {
+class Solver {
 public:
-    PlayerState state;
+    SolverState state;
     size_t step;
-    int x; 
-    int y;
-    Direction d;
 
-    Player(): state(PlayerState::initial), step(0), x(0), y(0), d(Direction::up) {}
+    Solver() : state(SolverState::INITIAL), step(0) {}
 
-    Direction move(Map &map) {
-        map.setVisitedFrom(x, y, oppositeDirection(d)); 
+    Movement move(Player &player, Map &map) {
+        step++;
+
+        map.setVisitedFrom(player.x, player.y, oppositeDirection(player.d)); 
+        if (setVisitedWallsIfAny_(player, map)) {
+            state = SolverState::WALL;
+        }
 
         int dx, dy;
 
         // Look for exit in <= 2 steps
-        if (find(CELL_EXIT, map, x, y, 2, dx, dy)) {
-            return doMove_(dx, dy);
+        if (find(CELL_EXIT, map, player.x, player.y, 2, dx, dy)) {
+            return player.move(dx, dy);
         }
 
         // Follow unfinished wall if exists
-        if (findMoveAlongUnfinishedWall_(dx, dy)) {
-            return doMove_(dx, dy);
+        if (SolverState::WALL == state && findMoveAlongUnfinishedWall_(player, map, dx, dy)) {
+            return player.move(dx, dy);
+        }
+
+        state = SolverState::LOOKUP;
+    
+        // Check neighbour walls (depth = 1)
+        if (findNeighbourWall_(player, dx, dy)) {
+            return player.move(dx, dy);
         }
 
         // TODO: look for unvisited walls adjacent to path cell on the map and go to the nearest if any
@@ -314,56 +412,100 @@ public:
 
         // TODO: look for unvisited cells outside the map and go to the nearest
 
-        // TODO: remove me
-        if (Direction::up == d) {
-            return doMove_(1, 0);
-        } 
-        if (Direction::right == d) {
-            return doMove_(0, 1);
-        } 
-        if (Direction::down == d) {
-            return doMove_(-1, 0);
+        // TODO: remove it
+        if (find(CELL_PATH, map, player.x, player.y, 100, dx, dy)) {
+            return player.move(dx, dy);
         }
-        if (Direction::left == d) {
-            return doMove_(0, -1);
-        }
+
         throw runtime_error("Unreachable");
     }
 
 private:
-    bool findMoveAlongUnfinishedWall_(int &dx, int &dy) const {
-        // for (const auto &dm : DMETA) {
-        //     if (CELL_WALL == map.get(x + dm.dx, y + dm.dy)) {
-        //         return moveAlongUnvisitedWall_(dm);
-        //     }
-        // }
-        return false;
+    bool setVisitedWallsIfAny_(Player &player, Map &map) {
+        bool found = false;
+        do {
+            auto rightNeighbour = player.cellAt(Movement::LEFT);
+            if (CELL_WALL != rightNeighbour.val) {
+                break;
+            }
+            map.setVisitedWall(rightNeighbour.x, rightNeighbour.y);
+            found = true;
+
+            auto topNeighbour = player.cellAt(Movement::FORWARD);
+            if (CELL_WALL != topNeighbour.val) {
+                break;
+            }
+            map.setVisitedWall(topNeighbour.x, topNeighbour.y);
+
+            auto leftNeighbour = player.cellAt(Movement::RIGHT);
+            if (CELL_WALL != leftNeighbour.val) {
+                break;
+            }
+            map.setVisitedWall(leftNeighbour.x, leftNeighbour.y);
+        } while (false);
+
+        return found;
     }
 
-    Direction doMove_(const int dx, const int dy) {
-        auto nextD = moveToDirection(dx, dy);
-        auto rv = relativeDirection(d, nextD);
+    bool findNeighbourWall_(const Player &player, int &dx, int &dy) {
+        assert(SolverState::LOOKUP == state);
+        return probeNeighbourCell_(player, Movement::FORWARD, dx, dy) 
+            || probeNeighbourCell_(player, Movement::LEFT, dx, dy)
+            || probeNeighbourCell_(player, Movement::BACKWARD, dx, dy)
+            || probeNeighbourCell_(player, Movement::RIGHT, dx, dy);
+    }
 
-        x += dx;
-        y += dy;
-        d = nextD;
-        step++;
+    bool probeNeighbourCell_(Player player, Movement m, int &dx, int &dy) {
+        return player.move(m, dx, dy) && CELL_WALL == player.cellAt(Movement::RIGHT).val;
+    }
 
-        return rv;
+    bool findMoveAlongUnfinishedWall_(Player player, const Map &map, int &dx, int &dy) const {
+        assert(SolverState::WALL == state);
+
+        if (player.move(Movement::LEFT, dx, dy)) {
+            return isWallCell(player.cellAt(Movement::LEFT).val) 
+                && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
+        }
+
+        if (player.move(Movement::FORWARD, dx, dy)) {
+            if (isWallCell(player.cellAt(Movement::LEFT).val)) {
+                return !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
+            }
+
+            int stub;
+            return player.move(Movement::LEFT, stub, stub) 
+                && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
+        }
+
+        if (player.move(Movement::RIGHT, dx, dy)) {
+            return isWallCell(player.cellAt(Movement::LEFT).val) 
+                && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
+        }
+
+        if (player.move(Movement::BACKWARD, dx, dy)) {
+            if (isWallCell(player.cellAt(Movement::LEFT).val)) {
+                return !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
+            }
+
+            int stub;
+            return player.move(Movement::LEFT, stub, stub) 
+                && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
+        }
+
+        throw runtime_error("Unreachable");
     }
 };
 
 const char *filename = "state.dat";
 
-void serialize(const Player &player, const Map &map) {
+void serialize(const Solver &solver, const Player &player, const Map &map) {
     ofstream file(filename, ofstream::trunc);
     if (!file) {
         throw runtime_error("Cannot open file for writing");
     }
 
-    file << int(player.state) << " " << player.step
-         << " " << player.x << " " << player.y 
-         << " " << player.d << endl;
+    file << int(solver.state) << " " << solver.step << endl;
+    file << player.x << " " << player.y << " " << player.d << endl;
     file << map.north() << " " << map.west() << " " 
          << map.width() << " " << map.height() << endl;
 
@@ -378,16 +520,16 @@ void serialize(const Player &player, const Map &map) {
     file.flush();
 }
  
-void deserialize(Player &player, Map &map) {
+void deserialize(Solver &solver, Player &player, Map &map) {
     ifstream file(filename);
     if (!file) {
         return;
     }
     file.exceptions(ifstream::badbit | ifstream::failbit);
 
-    int ps, d;
-    file >> ps >> player.step >> player.x >> player.y >> d;
-    player.state = deserializePlayerState(ps);
+    int solverState, d;
+    file >> solverState >> solver.step >> player.x >> player.y >> d;
+    solver.state = deserializeSolverState(solverState);
     player.d = intToDirection(d);
    
     int north, west; 
@@ -417,10 +559,10 @@ void deserialize(Player &player, Map &map) {
 
 Angle calcNormalizedAngle(Direction d) {
     switch (d) {
-    case Direction::up: return angle0;
-    case Direction::right: return angle90;
-    case Direction::down: return angle180;
-    case Direction::left: return angle270;
+    case Direction::NORTH: return angle0;
+    case Direction::OST: return angle90;
+    case Direction::SOUTH: return angle180;
+    case Direction::WEST: return angle270;
     default: throw runtime_error("Unreachable");
     }
 }
@@ -430,11 +572,12 @@ int main() {
     cin >> playerId;
     cin.ignore();
 
-    Player player;
     Map map; 
+    Player player(map);
+    Solver solver;
 
     // read map & last player pos & direction from the file (if any)
-    deserialize(player, map);
+    deserialize(solver, player, map);
 
     // read area from stdin
     Map area(-1, -1, 3, 3);
@@ -447,26 +590,19 @@ int main() {
 
     // rotate area (normalize)
     auto angle = calcNormalizedAngle(player.d);
-    if (angle) {
+    if (Angle::angle0 != angle) {
         area = area.rotate(angle);
     }
 
     // map += area
     map.merge(player.y - 1, player.x - 1, area);
 
-    // move lookup:
-    //   - have a wall to follow? Continue folowwing
-    //   - know about unfollowed wall - go to the closest point of this wall
-    //   - go to the "best" unvisited (but known) point:
-    //     - point inside known rect
-    //     - closest point outside
-
     // do move 
     //  - change player pos and direction
-    //  - cout relative direction
-    cout << directionToString(player.move(map)) << endl;
+    //  - mark current cell as visited
+    //  - cout movement 
+    cout << movementToString(solver.move(player, map)) << endl;
 
     // save to the file
-    serialize(player, map);
+    serialize(solver, player, map);
 }
-

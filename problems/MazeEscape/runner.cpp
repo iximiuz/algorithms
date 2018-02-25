@@ -53,13 +53,13 @@ private:
             throw runtime_error("Empty grid");
         }
         if (x >= grid[0].size()) {
-            throw runtime_error("Out of range (x)");
+            throw runtime_error("Out of range (x=" + to_string(x) + ")");
         }
     }
 
     static void checkRangeY(const Grid &grid, size_t y) {
         if (y >= grid.size()) {
-            throw runtime_error("Out of range (y)");
+            throw runtime_error("Out of range (y=" + to_string(y) + ")");
         }
     }
 
@@ -192,7 +192,7 @@ public:
         if (Direction::down == d) {
             for (size_t x = 0; x < width_; x++) {
                 for (size_t y = 0; y < height_; y++) {
-                    rotated[x][y] = (*this)[width_ - x - 1][y];
+                    rotated[x][y] = (*this)[width_ - x - 1][height_ - y - 1];
                 }
             }
         }
@@ -234,10 +234,10 @@ struct Player {
         int nextX = int(x) + (DMETA[nextD].dx);
         int nextY = int(y) + (DMETA[nextD].dy);
 
-        if (0 >= nextX || size_t(nextX) >= map.width() - 1) {
+        if (0 > nextX || size_t(nextX) > map.width() - 1) {
             throw runtime_error("Bad movement - out of range (x)");
         }
-        if (0 >= nextY || size_t(nextY) >= map.height() - 1) {
+        if (0 > nextY || size_t(nextY) > map.height() - 1) {
             throw runtime_error("Bad movement - out of range (y)");
         }
         if ('#' == map[size_t(nextX)][size_t(nextY)]) {
