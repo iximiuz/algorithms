@@ -90,7 +90,7 @@ bool isWallCell(const Cell c) {
 class Map {
 private:
     typedef unordered_map<int, unordered_map<int, Cell>> Grid;
-    
+
     int north_;
     int west_;
     size_t width_;
@@ -100,7 +100,7 @@ private:
 public:
     Map(int north = 0, int west = 0, size_t width = 0, size_t height = 0)
         : north_(north), west_(west), width_(width), height_(height) {}
-    
+
     const int &north() const {
         return north_;
     }
@@ -123,7 +123,7 @@ public:
             return CELL_UNKNOWN;
         }
 
-        auto cell = col->second.find(y); 
+        auto cell = col->second.find(y);
         if (col->second.end() == cell) {
             return CELL_UNKNOWN;
         }
@@ -222,13 +222,13 @@ public:
             throw runtime_error("Unkown rotation angle");
         }
 
-        return rotated;    
+        return rotated;
     }
 
     string toString() const {
-        string rv = "north=" + to_string(north()) + 
+        string rv = "north=" + to_string(north()) +
                     " west=" + to_string(west()) +
-                    " width=" + to_string(width()) + 
+                    " width=" + to_string(width()) +
                     " height=" + to_string(height()) + "\n";
 
         for (int y = north(); y < north() + int(height()); y++) {
@@ -277,13 +277,13 @@ bool find(const Cell c, const Map &map, const int x, const int y, const size_t d
         for (const auto &dm : DMETA) {
            PNode neighbour(new Node(node->x + dm.dx, node->y + dm.dy, node));
            if (
-                   'x' != visited.get(neighbour->x, neighbour->y) 
-                   && (isPathCell(map.get(neighbour->x, neighbour->y)) 
+                   'x' != visited.get(neighbour->x, neighbour->y)
+                   && (isPathCell(map.get(neighbour->x, neighbour->y))
                       || CELL_EXIT == map.get(neighbour->x, neighbour->y))
                    && neighbour->deep <= deep
               ) {
                fringe.push(neighbour);
-            } 
+            }
         }
     }
 
@@ -305,7 +305,7 @@ struct NeighbourCell {
 
 class Player {
 public:
-    int x; 
+    int x;
     int y;
     Direction d;
     const Map &map;
@@ -369,7 +369,7 @@ SolverState deserializeSolverState(int state) {
     case 1: return SolverState::WALL;
     case 2: return SolverState::LOOKUP;
     }
-    throw runtime_error("Unkown player state");    
+    throw runtime_error("Unkown player state");
 }
 
 class Solver {
@@ -382,7 +382,7 @@ public:
     Movement move(Player &player, Map &map) {
         step++;
 
-        map.setVisitedFrom(player.x, player.y, oppositeDirection(player.d)); 
+        map.setVisitedFrom(player.x, player.y, oppositeDirection(player.d));
         if (setVisitedWallsIfAny_(player, map)) {
             state = SolverState::WALL;
         }
@@ -400,7 +400,7 @@ public:
         }
 
         state = SolverState::LOOKUP;
-    
+
         // Check neighbour walls (depth = 1)
         if (findNeighbourWall_(player, dx, dy)) {
             return player.move(dx, dy);
@@ -449,21 +449,21 @@ private:
 
     bool findNeighbourWall_(const Player &player, int &dx, int &dy) {
         assert(SolverState::LOOKUP == state);
-        return probeNeighbourCell_(player, Movement::FORWARD, dx, dy) 
+        return probeNeighbourCell_(player, Movement::FORWARD, dx, dy)
             || probeNeighbourCell_(player, Movement::LEFT, dx, dy)
             || probeNeighbourCell_(player, Movement::BACKWARD, dx, dy)
             || probeNeighbourCell_(player, Movement::RIGHT, dx, dy);
     }
 
     bool probeNeighbourCell_(Player player, Movement m, int &dx, int &dy) {
-        return player.move(m, dx, dy) && CELL_WALL == player.cellAt(Movement::RIGHT).val;
+        return player.move(m, dx, dy) && CELL_WALL == player.cellAt(Movement::LEFT).val;
     }
 
     bool findMoveAlongUnfinishedWall_(Player player, const Map &map, int &dx, int &dy) const {
         assert(SolverState::WALL == state);
 
         if (player.move(Movement::LEFT, dx, dy)) {
-            return isWallCell(player.cellAt(Movement::LEFT).val) 
+            return isWallCell(player.cellAt(Movement::LEFT).val)
                 && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
         }
 
@@ -473,12 +473,12 @@ private:
             }
 
             int stub;
-            return player.move(Movement::LEFT, stub, stub) 
+            return player.move(Movement::LEFT, stub, stub)
                 && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
         }
 
         if (player.move(Movement::RIGHT, dx, dy)) {
-            return isWallCell(player.cellAt(Movement::LEFT).val) 
+            return isWallCell(player.cellAt(Movement::LEFT).val)
                 && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
         }
 
@@ -488,7 +488,7 @@ private:
             }
 
             int stub;
-            return player.move(Movement::LEFT, stub, stub) 
+            return player.move(Movement::LEFT, stub, stub)
                 && !map.isVisitedFrom(player.x, player.y, oppositeDirection(player.d));
         }
 
@@ -498,15 +498,15 @@ private:
 
 const char *filename = "state.dat";
 
-void serialize(const Solver &solver, const Player &player, const Map &map) {
-    ofstream file(filename, ofstream::trunc);
+void serialize(int playerId, const Solver &solver, const Player &player, const Map &map) {
+    ofstream file(filename + to_string(playerId), ofstream::trunc);
     if (!file) {
         throw runtime_error("Cannot open file for writing");
     }
 
     file << int(solver.state) << " " << solver.step << endl;
     file << player.x << " " << player.y << " " << player.d << endl;
-    file << map.north() << " " << map.west() << " " 
+    file << map.north() << " " << map.west() << " "
          << map.width() << " " << map.height() << endl;
 
     for (int y = map.north(); y < map.north() + int(map.height()); y++) {
@@ -519,9 +519,9 @@ void serialize(const Solver &solver, const Player &player, const Map &map) {
 
     file.flush();
 }
- 
-void deserialize(Solver &solver, Player &player, Map &map) {
-    ifstream file(filename);
+
+void deserialize(int playerId, Solver &solver, Player &player, Map &map) {
+    ifstream file(filename + to_string(playerId));
     if (!file) {
         return;
     }
@@ -531,9 +531,9 @@ void deserialize(Solver &solver, Player &player, Map &map) {
     file >> solverState >> solver.step >> player.x >> player.y >> d;
     solver.state = deserializeSolverState(solverState);
     player.d = intToDirection(d);
-   
-    int north, west; 
-    size_t width, height; 
+
+    int north, west;
+    size_t width, height;
     file >> north >> west >> width >> height;
     file.ignore();
 
@@ -568,16 +568,16 @@ Angle calcNormalizedAngle(Direction d) {
 }
 
 int main() {
-    int playerId; // ignored
+    int playerId;
     cin >> playerId;
     cin.ignore();
 
-    Map map; 
+    Map map;
     Player player(map);
     Solver solver;
 
     // read map & last player pos & direction from the file (if any)
-    deserialize(solver, player, map);
+    deserialize(playerId, solver, player, map);
 
     // read area from stdin
     Map area(-1, -1, 3, 3);
@@ -597,12 +597,12 @@ int main() {
     // map += area
     map.merge(player.y - 1, player.x - 1, area);
 
-    // do move 
+    // do move
     //  - change player pos and direction
     //  - mark current cell as visited
-    //  - cout movement 
+    //  - cout movement
     cout << movementToString(solver.move(player, map)) << endl;
 
     // save to the file
-    serialize(solver, player, map);
+    serialize(playerId, solver, player, map);
 }

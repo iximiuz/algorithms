@@ -3,7 +3,7 @@
 set -e
 
 ./sbuild.sh
-[ -e state.dat ] && rm state.dat
-./runner simple.map R ./solution "$@"
-cat state.dat
+[ -e state.dat1 ] && rm state.dat1
+./runner complex.map L ./solution "$@"
+cat state.dat1
 
