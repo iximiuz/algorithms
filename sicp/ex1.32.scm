@@ -1,0 +1,41 @@
+(define (accumulate combiner null-value term a next b)
+  (if (> a b) 
+    null-value
+    (accumulate combiner (combiner (term a) null-value) term (next a) next b)
+  )
+)
+
+(define (accumulate combiner null-value term a next b)
+  (if (> a b) 
+    null-value
+    (combiner (term a) (accumulate combiner null-value term (next a) next b))
+  )
+)
+
+(define (sum term a next b)
+  (define (combiner v acc) (+ v acc))
+  (accumulate combiner 0 term a next b)
+)
+
+(define (term x) x)
+(define (next x) (+ x 1))
+(sum term 0 next 1)
+(sum term 1 next 10)
+(sum term 2 next 10)
+(sum term 3 next 10)
+(sum term 4 next 10)
+(sum term 5 next 10)
+(sum term 6 next 10)
+
+(define (product term a next b)
+  (define (combiner v acc) (* v acc))
+  (accumulate combiner 1 term a next b)
+)
+(product term 0 next 1)
+(product term 1 next 10)
+(product term 2 next 10)
+(product term 3 next 10)
+(product term 4 next 10)
+(product term 5 next 10)
+(product term 6 next 10)
+
