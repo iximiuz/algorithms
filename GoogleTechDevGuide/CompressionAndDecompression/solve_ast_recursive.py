@@ -45,6 +45,10 @@ def ast(s, pos=-1):
     if pos >= len(s):
         return ''
 
+    if '[' == s[pos]:
+        _, pos = _parse_group(s, pos)
+        return ['+', '', ast(s, pos)]
+
     if _is_digit(s[pos]):
         mul, pos = _parse_num(s, pos)
         group, pos = _parse_group(s, pos)
@@ -74,4 +78,6 @@ def solve_ast_recursive(s):
 if __name__ == '__main__':
     print(solve_ast_recursive('3[abc]4[ab]c'))  # abcabcabcababababc
     print(solve_ast_recursive('2[3[a]b]'))  # aaabaaab
+    print(solve_ast_recursive('a[]b'))  # ab
+    print(solve_ast_recursive('0[abc]'))  # <empty>
 

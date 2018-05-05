@@ -42,6 +42,10 @@ def solve_recursive(s, pos=0):
     if pos >= len(s):
         return ''
 
+    if '[' == s[pos]:
+        _, pos = _parse_group(s, pos)
+        return solve_recursive(s, pos)
+
     if _is_digit(s[pos]):
         mul, pos = _parse_num(s, pos)
         group, pos = _parse_group(s, pos)
@@ -56,4 +60,6 @@ def solve_recursive(s, pos=0):
 if __name__ == '__main__':
     print(solve_recursive('3[abc]4[ab]c'))  # abcabcabcababababc
     print(solve_recursive('2[3[a]b]'))  # aaabaaab
+    print(solve_recursive('a[]b'))  # ab
+    print(solve_recursive('0[abc]'))  # <empty>
 

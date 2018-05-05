@@ -26,9 +26,11 @@ def _parse_str(s, pos):
 def solve_iterative(s):
     pos = 0
     muls = []
-    strs = []
+    strs = ['']
     while pos < len(s):
         if '[' == s[pos]:
+            if ']' == s[pos + 1]:
+                pos += 1
             pos += 1
             continue
 
@@ -51,4 +53,6 @@ def solve_iterative(s):
 if __name__ == '__main__':
     print(solve_iterative('3[abc]4[ab]c'))  # abcabcabcababababc
     print(solve_iterative('2[3[a]b]'))  # aaabaaab
+    print(solve_iterative('a[]b'))  # ab
+    print(solve_iterative('0[abc]'))  # <empty>
 
