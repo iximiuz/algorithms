@@ -1,5 +1,8 @@
 class IndexedHeap:
-    """ Binary heap with O(logn) delition at random position """
+    """ Binary heap with O(logn) delition at random position 
+
+    TODO: !!!IT DOES NOT SUPPORT DUPLICATES!!!
+    """
 
     def __init__(self):
         self._heap = []
