@@ -1,3 +1,11 @@
+"""
+  The idea behind the AVL tree is:
+    - on each tree modification keep doing left/right rotations 
+      in order to maintain the tree almost perfectly balanced
+      (difference between left and right subtrees' heights must
+      be less than of equal to 2).
+"""
+
 class Node:
     def __init__(self, val):
         self.val = val
